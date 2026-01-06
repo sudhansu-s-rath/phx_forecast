@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "studyAOI_outer",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "name": "Study Area Boundary" }, "geometry": { "type": "Polygon", "coordinates": [ [ [ -114.0, 32.0 ], [ -114.0, 35.0 ], [ -110.0, 35.0 ], [ -110.0, 32.0 ], [ -114.0, 32.0 ] ] ] } }
+]
+}
