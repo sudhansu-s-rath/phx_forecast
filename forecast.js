@@ -44,8 +44,14 @@ async function fetchForecastData() {
         });
         const pointData = await pointResponse.json();
 
-        const forecastUrl = pointData.properties.forecast;
-        const forecastHourlyUrl = pointData.properties.forecastHourly;
+        const forecastGridUrl = pointData.properties.forecastGridData;
+
+async function fetchGridData(gridUrl) {
+    // Note: NWS grid data is point-based, not full grid for overlay.
+    // For simplicity, we'll skip gridded overlays for now.
+    // Instead, we can enhance with icons or other features later.
+    console.log('Grid URL:', gridUrl);
+}
 
         // Fetch daily forecast
         const forecastResponse = await fetch(forecastUrl, {
@@ -78,9 +84,10 @@ function displayForecast(data) {
     container.innerHTML = '';
 
     periods.forEach(period => {
+        const icon = getWeatherIcon(period.shortForecast);
         const div = document.createElement('div');
         div.innerHTML = `
-            <h3>${period.name}</h3>
+            <h3>${icon} ${period.name}</h3>
             <p>${period.detailedForecast}</p>
             <p>Temperature: ${period.temperature}°${period.temperatureUnit}</p>
             <p>Wind: ${period.windSpeed} ${period.windDirection}</p>
@@ -125,7 +132,14 @@ function displayForecast(data) {
     });
 }
 
-function displayHourly(data) {
-    // For now, just log hourly data; can be used for more detailed display later
-    console.log('Hourly data:', data);
+function getWeatherIcon(shortForecast) {
+    const forecast = shortForecast.toLowerCase();
+    if (forecast.includes('sunny') || forecast.includes('clear')) return '☀️';
+    if (forecast.includes('cloudy') || forecast.includes('overcast')) return '☁️';
+    if (forecast.includes('rain') || forecast.includes('shower')) return '🌧️';
+    if (forecast.includes('snow')) return '❄️';
+    if (forecast.includes('thunder') || forecast.includes('storm')) return '⛈️';
+    if (forecast.includes('fog') || forecast.includes('mist')) return '🌫️';
+    if (forecast.includes('wind')) return '💨';
+    return '🌤️'; // default partly cloudy
 }
