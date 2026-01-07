@@ -41,8 +41,8 @@ async function fetchForecastData() {
         [32.0, -110.0]        // SE corner
     ];
 
-    // Fetch for all points
-    const promises = aoiPoints.map(async (point) => {
+    const results = [];
+    for (const point of aoiPoints) {
         const [lat, lon] = point;
         const pointUrl = `https://api.weather.gov/points/${lat},${lon}`;
 
@@ -62,15 +62,21 @@ async function fetchForecastData() {
             });
             const forecastData = await forecastResponse.json();
 
-            return { lat, lon, data: forecastData };
+            results.push({ lat, lon, data: forecastData });
         } catch (error) {
             console.error(`Error fetching for ${lat},${lon}:`, error);
-            return null;
         }
-    });
 
-    const results = await Promise.all(promises);
+        // Delay to avoid rate limiting (1 second between requests)
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
     const validResults = results.filter(r => r);
+
+    if (validResults.length === 0) {
+        document.getElementById('forecast-periods').innerHTML = '<p>Error loading forecast data. Please try again later.</p>';
+        return;
+    }
 
     // Use center point for main display
     const centerResult = validResults.find(r => r.lat === 33.4484 && r.lon === -112.0740);
