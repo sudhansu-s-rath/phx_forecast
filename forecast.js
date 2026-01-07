@@ -32,50 +32,56 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 async function fetchForecastData() {
-    const lat = 33.4484;
-    const lon = -112.0740;
-    const pointUrl = `https://api.weather.gov/points/${lat},${lon}`;
+    // Define points in AOI for gridded data (center and corners)
+    const aoiPoints = [
+        [33.4484, -112.0740], // Phoenix center
+        [32.0, -114.0],       // SW corner
+        [35.0, -114.0],       // NW corner
+        [35.0, -110.0],       // NE corner
+        [32.0, -110.0]        // SE corner
+    ];
 
-    try {
-        const pointResponse = await fetch(pointUrl, {
-            headers: {
-                'User-Agent': 'PhoenixForecastPortal/1.0 (contact@example.com)'
-            }
-        });
-        const pointData = await pointResponse.json();
+    // Fetch for all points
+    const promises = aoiPoints.map(async (point) => {
+        const [lat, lon] = point;
+        const pointUrl = `https://api.weather.gov/points/${lat},${lon}`;
 
-        const forecastGridUrl = pointData.properties.forecastGridData;
+        try {
+            const pointResponse = await fetch(pointUrl, {
+                headers: {
+                    'User-Agent': 'PhoenixForecastPortal/1.0 (contact@example.com)'
+                }
+            });
+            const pointData = await pointResponse.json();
 
-async function fetchGridData(gridUrl) {
-    // Note: NWS grid data is point-based, not full grid for overlay.
-    // For simplicity, we'll skip gridded overlays for now.
-    // Instead, we can enhance with icons or other features later.
-    console.log('Grid URL:', gridUrl);
-}
+            const forecastUrl = pointData.properties.forecast;
+            const forecastResponse = await fetch(forecastUrl, {
+                headers: {
+                    'User-Agent': 'PhoenixForecastPortal/1.0 (contact@example.com)'
+                }
+            });
+            const forecastData = await forecastResponse.json();
 
-        // Fetch daily forecast
-        const forecastResponse = await fetch(forecastUrl, {
-            headers: {
-                'User-Agent': 'PhoenixForecastPortal/1.0 (contact@example.com)'
-            }
-        });
-        const forecastData = await forecastResponse.json();
+            return { lat, lon, data: forecastData };
+        } catch (error) {
+            console.error(`Error fetching for ${lat},${lon}:`, error);
+            return null;
+        }
+    });
 
-        // Fetch hourly forecast
-        const hourlyResponse = await fetch(forecastHourlyUrl, {
-            headers: {
-                'User-Agent': 'PhoenixForecastPortal/1.0 (contact@example.com)'
-            }
-        });
-        const hourlyData = await hourlyResponse.json();
+    const results = await Promise.all(promises);
+    const validResults = results.filter(r => r);
 
-        displayForecast(forecastData);
-        displayHourly(hourlyData);
-
-    } catch (error) {
-        console.error('Error fetching forecast data:', error);
-        document.getElementById('forecast-periods').innerHTML = '<p>Error loading forecast data.</p>';
+    // Use center point for main display
+    const centerResult = validResults.find(r => r.lat === 33.4484 && r.lon === -112.0740);
+    if (centerResult) {
+        displayForecast(centerResult.data);
     }
+
+    // Add markers for all points
+    validResults.forEach(result => {
+        addForecastMarker(result);
+    });
 }
 
 function displayForecast(data) {
@@ -130,6 +136,37 @@ function displayForecast(data) {
         `;
         tableBody.appendChild(row);
     });
+}
+
+function addForecastMarker(result) {
+    const { lat, lon, data } = result;
+    const periods = data.properties.periods;
+    if (periods.length === 0) return;
+
+    const current = periods[0]; // First period
+    const icon = getWeatherIcon(current.shortForecast);
+    const temp = `${current.temperature}°${current.temperatureUnit}`;
+    const pop = current.probabilityOfPrecipitation ? `${current.probabilityOfPrecipitation.value}%` : '0%';
+
+    // Color based on temperature (simple scale)
+    let color = 'blue';
+    if (current.temperature > 80) color = 'red';
+    else if (current.temperature > 60) color = 'orange';
+    else if (current.temperature > 40) color = 'yellow';
+
+    const marker = L.circleMarker([lat, lon], {
+        color: color,
+        fillColor: color,
+        fillOpacity: 0.8,
+        radius: 10
+    }).addTo(map);
+
+    marker.bindPopup(`
+        <strong>${icon} ${current.name}</strong><br>
+        Temp: ${temp}<br>
+        PoP: ${pop}<br>
+        Wind: ${current.windSpeed} ${current.windDirection}
+    `);
 }
 
 function getWeatherIcon(shortForecast) {
